@@ -9,9 +9,9 @@
 #   mcast    (receivers, IPv4)
 #   mcast  -6  (receivers, IPv6)
 
-MYPORT = 6000
-MYGROUP_4 = '239.0.0.2'
-
+MYPORT = 6010
+MYGROUP_4 = '239.0.0.1'
+MYGROUP_6 = ""
 MYTTL = 1 # Increase to reach other networks
 
 import time
@@ -42,6 +42,7 @@ def sender(group):
 
     while True:
         data = repr(time.time())
+        print("sending: " + data)
         s.sendto(data + '\0', (addrinfo[4][0], MYPORT))
         time.sleep(1)
 
@@ -56,7 +57,7 @@ def receiver(group):
     # Allow multiple copies of this program on one machine
     # (not strictly needed)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     # Bind it to the port
     s.bind(('', MYPORT))
 
