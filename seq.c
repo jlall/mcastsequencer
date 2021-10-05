@@ -7,16 +7,17 @@
 #include <arpa/inet.h>
 #include <time.h>
 #include <stdio.h>
+#include <string.h>
 
 #define EXAMPLE_PORT 6000
 #define READ_GROUP "239.0.0.1"
 #define WRITE_GROUP "239.0.0.2"
 
-int main(int argc)
+int main(int argc, char** argv)
 {
   struct sockaddr_in saddr;
   struct sockaddr_in raddr;
-  int addrlen, sockread, sockwrite, cnt;
+  int saddrlen, raddrlen, sockread, sockwrite, cnt;
   struct ip_mreq mreq;
   char message[50];
   char smessage[50];
@@ -46,29 +47,30 @@ int main(int argc)
   if (setsockopt(sockwrite, SOL_SOCKET, SO_REUSEPORT, (const char*)&reuse, sizeof(reuse)) < 0)
     perror("setsockopt(SO_REUSEPORT) failed");
 
+  printf("setting up some socket stuff\n");
   /* send */
-  bzero((char *)&saddr, sizeof(saddr));
+  memset((void*)&saddr, 0, sizeof(saddr));
   saddr.sin_family = AF_INET;
   saddr.sin_addr.s_addr = htonl(INADDR_ANY);
   saddr.sin_port = htons(EXAMPLE_PORT);
-  addrlen = sizeof(saddr);
+  saddrlen = sizeof(saddr);
   saddr.sin_addr.s_addr = inet_addr(WRITE_GROUP);
  /* receive */
-  bzero((char *)&raddr, sizeof(raddr));
+  memset((void*)&raddr, 0, sizeof(raddr));
   raddr.sin_family = AF_INET;
   raddr.sin_addr.s_addr = htonl(INADDR_ANY);
   raddr.sin_port = htons(EXAMPLE_PORT);
-  addrlen = sizeof(raddr);
+  raddrlen = sizeof(raddr);
   raddr.sin_addr.s_addr = inet_addr(READ_GROUP);
   uint n = 0;
-
+  printf("ready to bind\n");
   /* receive */
 	if (bind(sockread, (struct sockaddr *) &raddr, sizeof(raddr)) < 0) 
 	{        
 		perror("bind");
 	 	return(1);
   }    
-
+  printf("set up mcast listening\n");
   mreq.imr_multiaddr.s_addr = inet_addr(READ_GROUP);         
   mreq.imr_interface.s_addr = htonl(INADDR_ANY);         
   if (setsockopt(sockread, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) 
@@ -76,21 +78,22 @@ int main(int argc)
 		perror("setsockopt mreq");
 	 	return(1);
 	}         
-	
+	printf("ready to go to while loop to listen\n");
   while (1) 
 	{
- 	 cnt = recvfrom(sockread, message, sizeof(message), 0, 
-			(struct sockaddr *) &raddr, &addrlen);
+   printf("...listening to: \n");
+ 	 cnt = recvfrom(sockread, message, sizeof(message), 0, (struct sockaddr *) &raddr, (unsigned int *)&raddrlen);
 	 if (cnt < 0) 
 	 {
 	    perror("recvfrom");
 	    return(1);
 	 } else if (cnt == 0) 
    {
- 	    break;
+ 	    printf("cnt = 0, breaking\n");
+       break;
 	 }
 	 sprintf(smessage,"%i|%s",n++,message);
-	 cnt = sendto(sockwrite, smessage, sizeof(smessage), 0, (struct sockaddr *) &saddr, addrlen);
+	 cnt = sendto(sockwrite, smessage, sizeof(smessage), 0, (struct sockaddr *) &saddr, saddrlen);
 	 if (cnt < 0) 
 	 {
  	   perror("sendto");

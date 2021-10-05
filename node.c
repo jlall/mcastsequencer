@@ -10,12 +10,14 @@ unseq stream ( but no writing yet )
 #include <arpa/inet.h>
 #include <time.h>
 #include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
 #define EXAMPLE_PORT 6000
-#define WRITE_GROUP "239.0.0.1"
-#define READ_GROUP "239.0.0.2"
+#define WRITE_GROUP "239.0.0.2"
+#define READ_GROUP "239.0.0.1"
 
-main(int argc)
+int main(int argc, char** argv)
 {
   struct sockaddr_in saddr;
   struct sockaddr_in raddr;
@@ -27,12 +29,12 @@ main(int argc)
   sockread = socket(AF_INET, SOCK_DGRAM, 0);
   if (sockread < 0) {
     perror("socket");
-    exit(1);
+    return(1);
   }
   sockwrite = socket(AF_INET, SOCK_DGRAM, 0);
   if (sockwrite < 0) {
     perror("socket");
-    exit(1);
+    return(1);
   }
 
   int reuse = 1;
@@ -67,27 +69,32 @@ main(int argc)
 	if (bind(sockread, (struct sockaddr *) &raddr, sizeof(raddr)) < 0) 
 	{        
 		perror("bind");
-	 	exit(1);
-  }    
+	 	return(1);
+  }
+
+  bzero(&mreq, sizeof(mreq) );
 
   mreq.imr_multiaddr.s_addr = inet_addr(READ_GROUP);         
-  mreq.imr_interface.s_addr = htonl(INADDR_ANY);         
+  mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+
   if (setsockopt(sockread, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) 
 	{
 		perror("setsockopt mreq");
-	 	exit(1);
-	}         
+	 	return(1);
+	}
+
 	while (1) 
 	{
- 	 cnt = recvfrom(sockread, message, sizeof(message), 0, 
-			(struct sockaddr *) &raddr, &addrlen);
-	 if (cnt < 0) 
-	 {
+    printf("recv .,,\n");
+    cnt = recvfrom(sockread, (void*)&message, sizeof(message), 0,  &raddr, &addrlen);
+	  printf("recvd .,,\n");
+    if (cnt < 0) 
+	  {
 	    perror("recvfrom");
-	    exit(1);
-	 } else if (cnt == 0) {
+	    return(1);
+	  } else if (cnt == 0) {
  	    break;
-	 }
+	  }
 /*
 	 cnt = sendto(sockwrite, message, sizeof(message), 0, (struct sockaddr *) &saddr, addrlen);
 	 if (cnt < 0) 
